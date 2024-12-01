@@ -200,6 +200,70 @@ print(f"visited 数组占用内存：{sys.getsizeof(visited)/1024/1024:.2f} MB")
 
 对于不维护访问表的深度优先搜索算法，只需存储当前维护路径上的节点，因此空间复杂度为$`O(bd)`$，故深度优先搜索得以在实际问题中广泛应用的原因（实际问题的状态空间往往很大，比如围棋的状态空间，想要详细了解的读者可以去网上搜索相关资料）
 
-深度优先搜索不一定能找到最优解，故代码的编写留给读者。
+将广度优先搜索中current_state_bytes = q.popleft()修改成current_state_bytes = q.pop()，则变成使用深度优先搜索解决八数字推盘问题的代码示例，q占用内存：114.05 KB远高于广度优先搜索中q占用的内存0.61KB，在不维护访问表的情况下，深度优先搜索所需的内存远低于广度优先搜索（节省了parent数组占用的10MB内存）。
+
+# 启发式搜索
+启发式搜索使用了问题定义本身之外的知识来引导搜索算法。启发式搜索算法依赖于启发式代价函数h，其定义为每个节点到达目标节点代价的估计值。本书介绍了两种基本的启发式搜索方法：贪婪搜索和$`A^*`$搜索。
+对于八数字推盘问题常见的启发式函数有两种
+  1.曼哈顿距离：每个数字与其目标位置的水平和垂直距离的总和（不懂什么是曼哈顿距离的同学可上网查询相关资料）
+  2.不在目标位置的数字个数：计算当前状态与目标状态之间不一致的数字个数
+曼哈顿距离更具有普适应，如在迷宫问题中可以用曼哈顿距离作为启发函数，故我们使用曼哈顿距离作为八数字推盘问题的启发函数。
+## 贪婪搜索
+```
+import numpy as np
+import heapq
+import sys
+
+count = 0
+# 创建一个 3x3 的数字网格
+grid_initial = np.array([[8, 0, 6],
+                         [5, 4, 7],
+                         [2, 3, 1]])
+
+grid_final = np.array([[0, 1, 2],
+                       [3, 4, 5],
+                       [6, 7, 8]])
+
+# 获取当前位置周围可移动的位置
+def possible_position(rows, cols):
+    # 计算四个可能的移动位置
+    n_position = [(rows-1, cols), (rows+1, cols), (rows, cols-1), (rows, cols+1)]
+    # 过滤掉超出边界的位置
+    n_position = [(r, c) for r, c in n_position if 0 <= r < 3 and 0 <= c < 3]
+    return n_position
+
+
+def manhattan_distance(current_state,goal_state):
+    distance = 0
+    for i in range(8):
+        current_pos = np.where(current_state==(i+1))[0],np.where(current_state==(i+1))[1]
+        goal_pos = np.where(goal_state==(i+1))[0],np.where(goal_state==(i+1))[1]  # 由于目标状态是不变的，故目标状态的索引值只需求一次，相应优化留给读者。
+        distance += abs(current_pos[0]-goal_pos[0])+abs(current_pos[1]-goal_pos[1])
+    return distance[0]
+# 队列和已访问状态集合
+priority_queue = []
+visited = set()
+# 如果不把numpy数组转化成字节模式放入heapq中会报错，有人知道是为啥吗，莫名其妙的bug。
+heapq.heappush(priority_queue,(manhattan_distance(grid_initial,grid_final),grid_initial.tobytes()))
+visited.add(grid_initial.tobytes())
+
+# 计数器
+while priority_queue:
+    current_state_bytes = heapq.heappop(priority_queue)[1]
+    current_state = np.frombuffer(current_state_bytes, dtype = int).reshape(3, 3)
+    if np.array_equal(current_state,grid_final):
+        print(f"总共执行次数：{count}")
+        break
+    row,col = np.where(current_state==0)[0][0],np.where(current_state==0)[1][0]
+    for next_position_0 in possible_position(row,col):
+        current_state_copy = current_state.copy()
+        current_state_copy[(row,col)],current_state_copy[next_position_0] = current_state_copy[next_position_0],current_state_copy[(row,col)]
+        if current_state_copy.tobytes() not in visited:
+            visited.add(current_state_copy.tobytes())
+            heapq.heappush(priority_queue,(manhattan_distance(current_state_copy,grid_final),current_state_copy.tobytes()))
+
+    count+=1
+```
+贪婪搜索，总共执行次数：83，相比于深度优先搜索执行次数：16672，加入启发式函数后，大大减少了搜索的次数。本质上，启发式搜索就是有选择的深度搜索，即在一个搜索树中，深度搜索总会优先搜索最左侧的分支，对于添加了启发函数的贪婪搜素而言，搜索时总会搜索启发函数值最小的分支，大大提高了搜索效率。
 
 
