@@ -247,7 +247,7 @@ visited = set()
 heapq.heappush(priority_queue,(manhattan_distance(grid_initial,grid_final),grid_initial.tobytes()))
 visited.add(grid_initial.tobytes())
 
-# 计数器
+
 while priority_queue:
     current_state_bytes = heapq.heappop(priority_queue)[1]
     current_state = np.frombuffer(current_state_bytes, dtype = int).reshape(3, 3)
