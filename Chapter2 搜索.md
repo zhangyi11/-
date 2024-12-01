@@ -242,6 +242,7 @@ def manhattan_distance(current_state,goal_state):
 # 队列和已访问状态集合
 priority_queue = []
 visited = set()
+
 # 如果不把numpy数组转化成字节模式放入heapq中会报错，有人知道是为啥吗，莫名其妙的bug。
 heapq.heappush(priority_queue,(manhattan_distance(grid_initial,grid_final),grid_initial.tobytes()))
 visited.add(grid_initial.tobytes())
