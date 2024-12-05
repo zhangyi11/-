@@ -268,3 +268,93 @@ while priority_queue:
 
 读者可以尝试将启发函数修改为 *不在目标位置的数字个数* ，比较那个启发函数更高效。启发式搜索的重点就在于针对特定的问题如何找到一个好的启发函数。
 
+## $`A^*`$搜索：贪婪搜索的优化
+相比贪婪搜索，$`A^*`$算法采用更为精确的评价函数对扩展节点进行评估，即$`A^*`$算法的评价函数步进利用启发函数，而且还包含起始节点到目前节点的真实损耗（贪婪搜索的评价函数就是启发函数）。令$`g(n)`$表示算法所找的从起始节点S到节点n的实际代价，$`h(n)`$表示启发函数，定义从当前节点到目标节点的最佳路径代价估计（启发函数的结果就是估计值）。
+
+为保证$`A^*`$算法找到最优解，启发函数需要满足$`h(n)≤h^*(n)`$
+
+```
+import numpy as np
+import heapq
+
+count = 0
+loss = 0
+# 创建一个 3x3 的数字网格
+grid_initial = np.array([[8, 0, 6],
+                         [5, 4, 7],
+                         [2, 3, 1]])
+
+grid_final = np.array([[0, 1, 2],
+                       [3, 4, 5],
+                       [6, 7, 8]])
+
+# 获取当前位置周围可移动的位置
+def possible_position(rows, cols):
+    # 计算四个可能的移动位置
+    n_position = [(rows-1, cols), (rows+1, cols), (rows, cols-1), (rows, cols+1)]
+    # 过滤掉超出边界的位置
+    n_position = [(r, c) for r, c in n_position if 0 <= r < 3 and 0 <= c < 3]
+    return n_position
+
+
+def manhattan_distance(current_state,goal_state):
+    distance = 0
+    for i in range(8):
+        current_pos = np.where(current_state==(i+1))[0],np.where(current_state==(i+1))[1]
+        goal_pos = np.where(goal_state==(i+1))[0],np.where(goal_state==(i+1))[1]  # 由于目标状态是不变的，故目标状态的索引值只需求一次，相应优化留给读者。
+        distance += abs(current_pos[0]-goal_pos[0])+abs(current_pos[1]-goal_pos[1])
+    return distance[0]
+
+def find_index(lst, value):
+    try:
+        return lst.index(value)
+    except ValueError:
+        return None
+
+# 队列和已访问状态集合
+priority_queue = []
+parent = {grid_initial.tobytes():(None,loss)}  # parent记录{子状态：（父状态，初始状态到子状态的实际损耗值）}
+
+# 如果不把numpy数组转化成字节模式放入heapq中会报错，有人知道是为啥吗，莫名其妙的bug。
+
+heapq.heappush(priority_queue, (
+    (lambda loss, heuristic: loss + heuristic)(loss, manhattan_distance(grid_initial, grid_final)),
+    grid_initial.tobytes()
+))
+
+while priority_queue:
+    current_state_loss,current_state_bytes = heapq.heappop(priority_queue)
+    current_state = np.frombuffer(current_state_bytes, dtype = int).reshape(3, 3)
+    if np.array_equal(current_state,grid_final):
+        print(f"总共执行次数：{count}")
+        path = []
+        state = current_state_bytes
+        while state is not None:
+            path.append(np.frombuffer(state, dtype = int).reshape(3, 3))
+            state = parent[state][0]
+
+        # 输出最优解路径
+        print("最优解路径：")
+        for step in path[::-1]:  # 反向输出路径
+            print(step)
+            count += 1
+        print(f"总共需要挪动{len(path)}次")
+        break
+    row,col = np.where(current_state==0)[0][0],np.where(current_state==0)[1][0]
+    for next_position_0 in possible_position(row,col):
+        current_state_copy = current_state.copy()
+        current_state_copy[(row,col)],current_state_copy[next_position_0] = current_state_copy[next_position_0],current_state_copy[(row,col)]
+        if current_state_copy.tobytes() not in parent:
+            parent[current_state_copy.tobytes()] = current_state_bytes,current_state_loss+1
+            heapq.heappush(priority_queue,((lambda loss, heuristic: loss + heuristic)(current_state_loss+1, manhattan_distance(current_state_copy, grid_final)),current_state_copy.tobytes()))
+        else:
+            index = find_index(priority_queue,current_state_copy.tobytes())
+            if index is not None:
+                current_state_copy_envaluation_value = parent[current_state_copy.tobytes()][1]
+                current_state_loss +=1
+                if manhattan_distance(current_state_copy, grid_final) + current_state_loss < current_state_copy_envaluation_value:
+                    heapq.heappush(priority_queue,(current_state_copy.tobytes(),manhattan_distance(current_state_copy, grid_final) + current_state_loss))
+    count+=1
+
+```
+
