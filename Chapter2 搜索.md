@@ -358,3 +358,148 @@ while priority_queue:
 
 ```
 
+## 双向搜素
+上述介绍的搜索算法都是从初始节点开始的，逐步向目标节点进行探索，大致需要$`b^d`$的时间，但如果从初始节点和目标节点同时开始搜索，如果正好能在搜索过程中相遇，那么大致需要$`2b^d`$的时间，当b和d较大时，双向搜索可节省大量时间。
+
+相比于单向搜索，双向搜索的难点：
+
+1.找到一个合适的停止条件，使双向搜索找到的解是最优解。
+
+2.如何扩展节点。
+
+下面给出基于单向广度搜索代码更改变成的双向广度优先搜索，代码中停止条件是前向搜索（从初始节点开始搜索）和后向搜索（从目标节点开始搜索）有相同的扩展节点（parent字典中的键值即为扩展节点，q队列中元素为待扩展节点）；扩展节点的顺序是前向搜索扩展一个节点后，后向搜索再扩展一个节点，即前向搜索和后向搜索交替扩展节点。
+```
+import numpy as np
+from collections import deque
+import sys
+
+# 创建一个 3x3 的数字网格
+grid_initial = np.array([[8, 0, 6],
+                         [5, 4, 7],
+                         [2, 3, 1]])
+
+grid_final = np.array([[0, 1, 2],
+                       [3, 4, 5],
+                       [6, 7, 8]])
+
+# 获取当前位置周围可移动的位置
+def possible_position(rows, cols):
+    # 计算四个可能的移动位置
+    n_position = [(rows-1, cols), (rows+1, cols), (rows, cols-1), (rows, cols+1)]
+    # 过滤掉超出边界的位置
+    n_position = [(r, c) for r, c in n_position if 0 <= r < 3 and 0 <= c < 3]
+    return n_position
+
+
+# 队列和已访问状态集合
+q_f = deque()
+q_b = deque()
+parent_f = {}
+parent_b = {}
+
+# 计数器
+count = 0
+
+# 初始化队列和已访问集合
+q_f.append(grid_initial.tobytes())  # 使用tobytes()来表示状态，numpy数组无法hash，转化成字节后可以hash
+q_b.append(grid_final.tobytes())  # 使用tobytes()来表示状态，numpy数组无法hash，转化成字节后可以hash
+# 记录父状态和移动方向
+parent_f[grid_initial.tobytes()] = None  # 初始状态没有父状态
+parent_b[grid_final.tobytes()] = None  # 初始状态没有父状态
+
+
+while q_f and q_b:
+    # 前向搜索
+    current_state_bytes_f = q_f.popleft()
+    current_state_f = np.frombuffer(current_state_bytes_f, dtype = int).reshape(3, 3)  # 转换回数组
+    # 前向搜索扩展的节点出现在后向搜索扩展的节点中，则意味着找到一个解，但这个解不是最优解。
+    if current_state_bytes_f in parent_b:
+        print("找到解")
+        path_f,path_b = [],[]
+        state_f,state_b = current_state_bytes_f,current_state_bytes_f
+        while state_f is not None:
+            path_f.append(np.frombuffer(state_f, dtype = int).reshape(3, 3))
+            state_f = parent_f[state_f]
+        while state_b is not None:
+            path_b.append(np.frombuffer(state_b, dtype = int).reshape(3, 3))
+            state_b = parent_b[state_b]
+        path = path_f[::-1] + path_b[1:]
+        print(f"{len(path)=},{path}")
+        break
+
+
+    # 找到0的位置
+    rows_f, cols_f = np.where(current_state_f == 0)
+    current_position_f_0 = (rows_f[0], cols_f[0])
+
+    for next_position_f_0 in possible_position(rows_f[0], cols_f[0]):
+        # 交换0和相邻位置的数字
+        next_state = current_state_f.copy()
+        next_state[current_position_f_0], next_state[next_position_f_0] = next_state[next_position_f_0], next_state[
+            current_position_f_0]
+
+        next_state_bytes = next_state.tobytes()
+        if next_state_bytes not in parent_f:
+            q_f.append(next_state_bytes)
+            parent_f[next_state_bytes] = current_state_bytes_f # 记录父状态和移动方向
+        count+=1
+
+    
+    # 后向搜索
+    # 前向搜索和后向搜索的逻辑相同，
+    current_state_bytes_b = q_b.popleft()
+    current_state_b = np.frombuffer(current_state_bytes_b, dtype = int).reshape(3, 3)  # 转换回数组
+
+    # 后向搜索扩展的节点出现在前向搜索扩展的节点中，则意味着找到一个解，但这个解不是最优解。
+    if current_state_bytes_b in parent_f:
+        print("找到解")
+        path_f, path_b = [], []
+        state_f, state_b = current_state_bytes_f, current_state_bytes_f
+        while state_f is not None:
+            path_f.append(np.frombuffer(state_f, dtype = int).reshape(3, 3))
+            state_f = parent_f[state_f]
+        while state_b is not None:
+            path_b.append(np.frombuffer(state_b, dtype = int).reshape(3, 3))
+            state_b = parent_b[state_b]
+        path = path_f[::-1]+path_b[1:]
+        print(f"{len(path)=},{path}")
+        print(f"{path_f=}\n{path_b=}")
+        break
+
+    # 找到0的位置
+    rows_b, cols_b = np.where(current_state_b == 0)
+    current_position_b_0 = (rows_b[0], cols_b[0])
+
+    for next_position_b_0 in possible_position(rows_b[0], cols_b[0]):
+        # 交换0和相邻位置的数字
+        next_state = current_state_b.copy()
+        next_state[current_position_b_0], next_state[next_position_b_0] = next_state[next_position_b_0], next_state[
+            current_position_b_0]
+
+        # 将新状态转为字节格式，避免重复访问
+        next_state_bytes = next_state.tobytes()
+        if next_state_bytes not in parent_b:
+            q_b.append(next_state_bytes)
+            # 记录父状态和移动方向
+            parent_b[next_state_bytes] = current_state_bytes_b
+        count+=1
+
+print(f"{count=}")
+print(f"parent 数组占用内存：{sys.getsizeof(parent_f)/1024/1024:.2f} MB")
+print(f"parent 数组占用内存：{sys.getsizeof(parent_b)/1024/1024:.2f} MB")
+print(f"q占用内存：{sys.getsizeof(q_f)/1024:.2f} KB")
+print(f"q占用内存：{sys.getsizeof(q_b)/1024:.2f} KB")
+```
+代码运行结果parent_f 数组占用内存：0.28 MB，parent_b 数组占用内存：0.28 MB，q_f占用内存：27.42 KB，q_b占用内存：25.36 KB，count=29724，循环总共执行29724次，相比于单向搜索count=483870，双向搜索在时间和空间上有了显著提升。
+
+使用上述停止条件的双向广度搜索找到的解不一定是最优解，即前向搜索和后向搜索中有相同的扩展节点时搜索停止；在本例中，双向广度搜索找到的第一个解是最优解，但是在大多数情况中，使用该停止条件找到的解并不是最优解，还需要进行“后期处理”。
+
+下面给出双向过度搜索中可以找到最优解的停止条件，Nicholson条件：$`g_F(n)+g_B(n)≤gmin_F+gmin_B`$
+
+$`g_F(n)+g_B(n)`$的含义：当前向搜索和后向搜索在扩展节点时存在相同节点n时，计算从初始节点经过节点n到目标节点的真实代价。
+$`gmin_F`$：前向搜素中待扩展节点中最小的真实损耗值，即q_f中最小值。
+$`gmin_F`$：后向搜素中待扩展节点中最小的真实损耗值，即q_f中最小值。
+Nicholson条件的含义是，待扩展节点中没有比扩展节点更小的损耗值，从而保证当前得到的解是最优解。代码编写留给读者思考。
+详细内容可以查阅论文:T.A.J. Nicholson
+Finding the shortest route between two points in a network
+Comput. J., 9 (3) (1966), pp. 275-280
