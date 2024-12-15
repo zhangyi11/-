@@ -510,10 +510,11 @@ Comput. J., 9 (3) (1966), pp. 275-280
 双向搜索在中间相遇的定义：前向搜索不扩展$`g_F(n)>\frac{1}{2}C^*`$的节点，后向搜索不扩展$`g_B(n)>\frac{1}{2}C^*`$。
 传统的双向搜索难以实现在中间相遇，举个例子
 ![image](https://github.com/zhangyi11/Artificial-Intelligence-Yao-Qi-Zhi/blob/main/%E5%9B%BE%E7%89%87/Chapter%202/Bi-HS%20systems%20fail%20to%20meet%20in%20the%20middle.png)
-在本例中前向搜索可能搜索完所有的$`X_i`$节点，没有实现前向搜索和后向搜索在中间相遇。
+在本例中前向搜索可能搜索完所有的$`X_i`$节点，还没有访问到节点A时，后向搜索已经找到解，没有实现前向搜索和后向搜索在中间相遇，即后向搜索扩展了$`>\frac{1}{2}C^*`$的节点。
 
 下面给出双向$`A_*`$搜索在中间相遇的MM算法，详细内容可阅读论文， MM: A bidirectional search algorithm that is guaranteed to meet in the middle
-使用$`pr_F(n)=max(f_F(n),2g_F(n))`$保证前向搜索不扩展$`g_F(n)>\frac{1}{2}C^*`$的节点，后向搜索不扩展$`g_B(n)>\frac{1}{2}C^*`$；使用$`U≤max(C,fmin_F,fmin_B,gin_F+gmin_B)`$保证双向搜索找到的解一定是最优解。
+
+论文中使用$`pr_F(n)=max(f_F(n),2g_F(n))`$保证前向搜索不扩展$`g_F(n)>\frac{1}{2}C^*`$的节点，后向搜索不扩展$`g_B(n)>\frac{1}{2}C^*`$；使用$`U≤max(C,fmin_F,fmin_B,gin_F+gmin_B)`$保证双向搜索找到的解一定是最优解。
 
 
 
