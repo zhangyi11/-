@@ -509,6 +509,8 @@ Comput. J., 9 (3) (1966), pp. 275-280
 现在我们来探讨双向搜素中第三个难点，如何使前向搜索和后向搜索在中间相遇（meet in the middle）
 双向搜索在中间相遇的定义：前向搜索不扩展$`g_F(n)>\frac{1}{2}C^*`$的节点，后向搜索不扩展$`g_B(n)>\frac{1}{2}C^*`$。
 传统的双向搜索难以实现在中间相遇，举个例子
+![image](https://github.com/zhangyi11/Artificial-Intelligence-Yao-Qi-Zhi/blob/main/%E5%9B%BE%E7%89%87/Chapter%202/initial_layout.png)
+在本例中前向搜索可能搜索完所有的$`X_i`$节点，没有实现前向搜索和后向搜索在中间相遇。
 
 
 
