@@ -516,6 +516,176 @@ Comput. J., 9 (3) (1966), pp. 275-280
 
 论文中使用$`pr_F(n)=max(f_F(n),2g_F(n))`$保证前向搜索不扩展$`g_F(n)>\frac{1}{2}C^*`$的节点，后向搜索不扩展$`g_B(n)>\frac{1}{2}C^*`$；使用$`U≤max(C,fmin_F,fmin_B,gin_F+gmin_B)`$保证双向搜索找到的解一定是最优解。
 
+```
+import numpy as np
+from queue import PriorityQueue
+import sys
+import math
+
+# 创建一个 3x3 的数字网格
+grid_initial = np.array([[8, 0, 6],
+                         [5, 4, 7],
+                         [2, 3, 1]])
+
+grid_final = np.array([[0, 1, 2],
+                       [3, 4, 5],
+                       [6, 7, 8]])
+
+
+# 获取当前位置周围可移动的位置
+def possible_position(rows, cols):
+    # 计算四个可能的移动位置
+    n_position = [(rows-1, cols), (rows+1, cols), (rows, cols-1), (rows, cols+1)]
+    # 过滤掉超出边界的位置
+    n_position = [(r, c) for r, c in n_position if 0 <= r < 3 and 0 <= c < 3]
+    return n_position
+
+def manhattan_distance(current_state,goal_state):
+    distance = 0
+    for i in range(8):
+        current_pos = np.where(current_state==(i+1))[0],np.where(current_state==(i+1))[1]
+        goal_pos = np.where(goal_state==(i+1))[0],np.where(goal_state==(i+1))[1]  # 由于目标状态是不变的，故目标状态的索引值只需求一次，相应优化留给读者。
+        distance += abs(current_pos[0]-goal_pos[0])+abs(current_pos[1]-goal_pos[1])
+    return distance[0]
+
+def prmin(current_state_to_bytes,direction):
+    current_state = np.frombuffer(current_state_to_bytes, dtype = int).reshape(3, 3)
+    if direction == "forward":
+        return max(2*g_f[current_state_to_bytes],g_f[current_state_to_bytes]+manhattan_distance(current_state,grid_final))
+    if direction == "backward":
+        return max(2*g_b[current_state_to_bytes],g_b[current_state_to_bytes]+manhattan_distance(current_state,grid_initial))
+
+def gorfmin(direction,min_type):
+    if direction == "forward" and min_type =="fmin":
+        current_min = math.inf
+        for i in open_f:
+            if g_f[i] < current_min:
+                current_min = g_f[i]
+                current_state = np.frombuffer(i, dtype = int).reshape(3, 3)
+        return current_min + manhattan_distance(current_state,grid_final)
+
+    if direction == "backward" and min_type == "fmin":
+        current_min = math.inf
+        for i in open_b:
+            if g_b[i] < current_min:
+                current_min = g_b[i]
+                current_state = np.frombuffer(i, dtype = int).reshape(3, 3)
+        return current_min+manhattan_distance(current_state, grid_initial)
+
+    if min_type == "gmin":
+        g_min_f = min([g_f[i] for i in open_f])
+        g_min_b = min([g_b[i] for i in open_b])
+        return g_min_b+g_min_f
+# 队列和已访问状态集合
+q_f = PriorityQueue()
+q_b = PriorityQueue()
+open_f = set()
+open_b = set()
+parent_f = {}
+parent_b = {}
+g_f={grid_initial.tobytes():0}
+g_b={grid_final.tobytes():0}  # 记录初始状态到当前状态的真实损耗值
+# 计数器
+count = 0
+solution = False
+U = math.inf
+# 初始化队列和已访问集合
+q_f.put((prmin(grid_initial.tobytes(),"forward"),grid_initial.tobytes()))  # 使用tobytes()来表示状态，numpy数组无法hash，转化成字节后可以hash
+q_b.put((prmin(grid_final.tobytes(),"backward"),grid_final.tobytes()))  # 使用tobytes()来表示状态，numpy数组无法hash，转化成字节后可以hash
+# 记录父状态和移动方向
+parent_f[grid_initial.tobytes()] = None  # 初始状态没有父状态
+parent_b[grid_final.tobytes()] = None  # 初始状态没有父状态
+
+while q_f and q_b:
+    C=min(q_f.queue[0][0],q_b.queue[0][0])
+
+    if C == q_f.queue[0][0]:  # 前向搜索
+        current_state_bytes_f = q_f.get()[1]
+        open_f.discard(current_state_bytes_f)
+        current_state_f = np.frombuffer(current_state_bytes_f, dtype = int).reshape(3, 3)  # 转换回数组
+        rows_f, cols_f = np.where(current_state_f == 0)
+        current_position_f_0 = (rows_f[0], cols_f[0])
+
+        for next_position_f_0 in possible_position(rows_f[0], cols_f[0]):
+            # 交换0和相邻位置的数字
+            next_state = current_state_f.copy()
+            next_state[current_position_f_0], next_state[next_position_f_0] = next_state[next_position_f_0], next_state[
+                current_position_f_0]
+
+            next_state_bytes = next_state.tobytes()
+            if next_state_bytes not in parent_f:
+                g_f[next_state_bytes] = g_f[current_state_bytes_f]+1
+                q_f.put((prmin(next_state_bytes,"forward"),next_state_bytes))
+                parent_f[next_state_bytes] = current_state_bytes_f  # 记录父状态和移动方向
+                open_f.add(next_state_bytes)
+                if next_state_bytes in open_b:
+                    U = min(U,g_f[next_state_bytes]+g_b[next_state_bytes])
+                    # print(f"{C=}, {gorfmin('forward', 'fmin')=}, {gorfmin('backward', 'fmin')=}, {gorfmin('forward', 'gmin')=}")
+                    #
+                    # print(f"{g_f}")
+                    if U<=max(C,gorfmin("forward","fmin"),gorfmin("backward","fmin"),gorfmin("forward","gmin")):
+                        print("找到最优解")
+
+                        path_f, path_b = [], []
+                        state_f, state_b = next_state_bytes, next_state_bytes
+                        while state_f is not None:
+                            path_f.append(np.frombuffer(state_f, dtype = int).reshape(3, 3))
+                            state_f = parent_f[state_f]
+                        while state_b is not None:
+                            path_b.append(np.frombuffer(state_b, dtype = int).reshape(3, 3))
+                            state_b = parent_b[state_b]
+                        path = path_f[::-1]+path_b[1:]
+                        print(f"{len(path)=},{path}")
+                        solution =True
+            count += 1
+
+
+    else:  # 后向搜索
+        current_state_bytes_b = q_b.get()[1]
+        open_b.discard(current_state_bytes_b)
+        current_state_b = np.frombuffer(current_state_bytes_b, dtype = int).reshape(3, 3)  # 转换回数组
+        rows_b, cols_b = np.where(current_state_b == 0)
+        current_position_b_0 = (rows_b[0], cols_b[0])
+
+        for next_position_b_0 in possible_position(rows_b[0], cols_b[0]):
+            # 交换0和相邻位置的数字
+            next_state = current_state_b.copy()
+            next_state[current_position_b_0], next_state[next_position_b_0] = next_state[next_position_b_0], next_state[
+                current_position_b_0]
+
+            next_state_bytes = next_state.tobytes()
+            if next_state_bytes not in parent_b:
+                g_b[next_state_bytes] = g_b[current_state_bytes_b]+1
+                q_b.put((prmin(next_state_bytes,"backward"),next_state_bytes))
+                parent_b[next_state_bytes] = current_state_bytes_b  # 记录父状态和移动方向
+                open_b.add(next_state_bytes)
+                if next_state_bytes in open_f:
+                    U = min(U,g_f[next_state_bytes]+g_b[next_state_bytes])
+                    if U<=max(C,gorfmin("forward","fmin"),gorfmin("backward","fmin"),gorfmin("forward","gmin")):
+                        print("找到最优解")
+                        path_f, path_b = [], []
+                        state_f, state_b = next_state_bytes, next_state_bytes
+                        while state_f is not None:
+                            path_f.append(np.frombuffer(state_f, dtype = int).reshape(3, 3))
+                            state_f = parent_f[state_f]
+                        while state_b is not None:
+                            path_b.append(np.frombuffer(state_b, dtype = int).reshape(3, 3))
+                            state_b = parent_b[state_b]
+                        path = path_f[::-1]+path_b[1:]
+                        print(f"{len(path)=},{path}")
+                        solution = True
+            count += 1
+
+    if solution:
+        break
+
+
+
+
+print(f"{count=}")
+```
+代码执行结果count=10368，优于双向广度搜索。
+
 
 
 
