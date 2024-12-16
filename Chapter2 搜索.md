@@ -706,7 +706,6 @@ print(f"{count=}")
 import networkx as nx
 import matplotlib.pyplot as plt
 
-# 创建一个复杂的示例图
 G = nx.Graph()
 edges = [
     (1, 2), (1, 3), (2, 4), (2, 5), (3, 6),
@@ -725,6 +724,10 @@ plt.title("Complex Graph", fontsize=14)
 plt.show()
 ```
 
+## 爬山法
+评估函数：h=-2*|{没有被X覆盖的边}|-|X|
+
+若有一条边没有被覆盖，则总可以把这条边的任一定点加入集合X中并使得h至少增加1，故任意的局部最优解都必然是一个点覆盖集。
 
 
 
