@@ -701,8 +701,29 @@ print(f"{count=}")
 
 # 最小点覆盖问题
 问题描述：给定一个无向图G=(V,E)。若存在点集U∈V，其图G中任意一条边中任意一个端点都在点集U中，则称U是图G的一个顶点覆盖。
+![image](https://github.com/zhangyi11/Artificial-Intelligence-Yao-Qi-Zhi/blob/main/%E5%9B%BE%E7%89%87/Chapter%202/MinimumVertexCover_initial.png)
+```
+import networkx as nx
+import matplotlib.pyplot as plt
 
+# 创建一个复杂的示例图
+G = nx.Graph()
+edges = [
+    (1, 2), (1, 3), (2, 4), (2, 5), (3, 6),
+    (4, 7), (5, 7), (6, 7), (5, 8), (6, 9),
+    (8, 9), (8, 10), (9, 10), (7, 10)
+]
+G.add_edges_from(edges)
 
+# 定义图的布局
+pos = nx.kamada_kawai_layout(G)
+
+# 绘制图形
+plt.figure(figsize=(10, 8))
+nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=1200, font_size=12)
+plt.title("Complex Graph", fontsize=14)
+plt.show()
+```
 
 
 
