@@ -728,8 +728,55 @@ plt.show()
 评估函数：h=-2*|{没有被X覆盖的边}|-|X|
 
 若有一条边没有被覆盖，则总可以把这条边的任一定点加入集合X中并使得h至少增加1，故任意的局部最优解都必然是一个点覆盖集。
+```
+import math
+import networkx as nx
+import matplotlib.pyplot as plt
+edges = [
+    (1, 2), (1, 3), (2, 4), (2, 5), (3, 6),
+    (4, 7), (5, 7), (6, 7), (5, 8), (6, 9),
+    (8, 9), (8, 10), (9, 10), (7, 10)
+]
+cover_vertex=set()
+uncover_vertex={1,2,3,4,5,6,7,8,9,10}
+min_heuristic_value=(-math.inf,None)
 
+def heuristic_value(edges,cover_vertex):
+    uncover_edges = [(u, v) for u, v in edges if u not in cover_vertex and v not in cover_vertex]
+    return -2*len(uncover_edges)-len(cover_vertex)
 
+while any(u not in cover_vertex and v not in cover_vertex for u, v in edges):
+    for vertex in uncover_vertex-cover_vertex:
+        cover_vertex_copy = cover_vertex.copy()
+        cover_vertex_copy.add(vertex)
+        if heuristic_value(edges,cover_vertex_copy)>min_heuristic_value[0]:
+            min_heuristic_value = heuristic_value(edges,cover_vertex_copy),vertex
+
+    cover_vertex.add(min_heuristic_value[1])
+
+print(cover_vertex)
+
+G = nx.Graph()
+G.add_edges_from(edges)
+
+# 定义布局
+pos = nx.kamada_kawai_layout(G)
+
+# 绘制顶点和边
+plt.figure(figsize=(10, 8))
+
+# 节点颜色：红色表示在 cover_vertex 中，蓝色表示不在其中
+node_colors = ['red' if node in cover_vertex else 'blue' for node in G.nodes()]
+nx.draw(
+    G, pos, with_labels=True, node_color=node_colors,
+    node_size=1200, font_size=12, edge_color='gray'
+)
+
+# 添加标题
+plt.title("Graph with Vertex Cover Highlighted", fontsize=16)
+plt.show()
+
+```
 
 
 
